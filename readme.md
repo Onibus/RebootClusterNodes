@@ -44,7 +44,7 @@ ClusterGroup [-site] {IND | DEN | LHR | FRA | YUL | YYZ} [[-TargetCluster] <Obje
 | `-site <region>` | Return a list of clusters within that region. |
 | `-TargetCluster <cluster>` | Comma delimited list of clusters to return for processing, useful to rerun ClusterGroup against specified cluster(s) that have completed their reboots while others in the region are ongoing. |
 | `-ExcludeCluster <cluster>` | Comma delimited list of clusters to exclude, useful for excluding clusters in a state of decomission. |
-| `-Exclude[HV|FS|SQL]` | Exclude respective cluster role from list. |
+| `-Exclude\[HV|FS|SQL\]` | Exclude respective cluster role from list. |
 | `-ForceReboot` | Bypass “pending reboot” check, rebooting the node. Does NOT force a node to reboot if there are drain failures. This switch should not be used unless directed to or for good reason. |
 
 ## Examples
