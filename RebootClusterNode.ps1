@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Automation to reboot Hyper-V nodes within a cluster.
 .DESCRIPTION
@@ -13,6 +13,9 @@
 
     ClusterGroup -site IND -ExcludeSQL
     Retrieves clusters in IND region, excluding all SQL clusters.
+
+    ClusterGroup -site YYZ -TargetCluster YYZCluster01
+    Retrieves a specific cluster in YYZ region
 #>
 
 $Payload_ScriptBlock = {
@@ -225,12 +228,12 @@ $Payload_ScriptBlock = {
             }
             write-cmlog -message "Pausing Host [$($node.name)] and draining roles. LastBootUpTime: $($b.lastbootuptime)"
             # Suspend-ClusterNode cannot be executed remotely, which is likely what we'd be doing. Invoke the command on the remote server instead
-            Invoke-Command -ComputerName $node.name -command { suspend-clusternode -drain -wait -Erroraction SilentlyContinue} 
+            Invoke-Command -ComputerName $node.name -command { suspend-clusternode -drain -wait -ErrorAction SilentlyContinue } 
             Start-Sleep -s 5
             $NodeStatus = checkcluster $clustername $node
             if (($NodeStatus.DrainStatus -ne "Completed")) {
                 write-cmlog -message "Initial drain of [$Node] was not successful. Trying one more time before user intervention is required." -Type 'Warning'
-                Invoke-Command -ComputerName $node.name -command { suspend-clusternode -drain -wait -Erroraction SilentlyContinue} 
+                Invoke-Command -ComputerName $node.name -command { suspend-clusternode -drain -wait -ErrorAction SilentlyContinue } 
                 Start-Sleep -s 2
                 $NodeStatus = checkcluster $clustername $node
                 if ($NodeStatus.DrainStatus -ne "Completed") {
@@ -325,13 +328,15 @@ function ClusterGroup {
         $site,
         [Parameter(Mandatory = $false, HelpMessage = "Specify a specific cluster to target in region")]
         $TargetCluster,
+        [Parameter(Mandatory = $false, HelpMessage = "Comma delimited array of clusters to not include.")]
+        [array]$ExcludeCluster,
         [Parameter(HelpMessage = "Switch to exclude Hyper-V Clusters from list.")]
         [switch]$ExcludeHV,
         [Parameter(HelpMessage = "Switch to exclude Fileserver Clusters from list.")]
         [switch]$ExcludeFS,
         [Parameter(HelpMessage = "Switch to exclude SQL Clusters from list.")]
         [switch]$ExcludeSQL,
-        [Parameter(Mandatory = $false, HelpMessage = "Use switch parameter to bypass 'Pending Reboot' check.")]
+        [Parameter(Mandatory = $false, HelpMessage = "Use switch parameter to bypass 'Pending Reboot' check. This does NOT force nodes to reboot that fail to drain.")]
         [switch]$ForceReboot
     )
     # 
@@ -345,6 +350,11 @@ function ClusterGroup {
     }
     if ($PSBoundParameters.ContainsKey('TargetCluster')) {
         $filterscript += " `${psitem}.name -match '${TargetCluster}'"
+    }
+    if ($PSBoundParameters.ContainsKey('ExcludeCluster')) {
+        foreach ($item in $ExcludeCluster) {
+            $filterscript += " `${psitem}.name -ne '$item'"
+        }
     }
     # Build conditional for each item in our array
     $filterscript_join = "$($filterscript -join '-and')"
