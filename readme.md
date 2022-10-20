@@ -2,6 +2,8 @@
 
 To get started, follow instructions in section **Download** and **Quickstart**. Codeblocks within these sections are safe to copy and paste, requiring only minor modifications when called out.
 
+Commands should be ran from elevated Powershell.
+
 # Download
 
 Retrieve latest version of the script and load functions for session.
