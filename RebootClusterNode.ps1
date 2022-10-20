@@ -299,13 +299,15 @@ $Payload_ScriptBlock = {
                 # Resume node in the cluster
                 write-cmlog -message "Attempting to resume [$Node]..."
                 Resume-ClusterNode -Name $Node.Name -Cluster $ClusterName
-                Start-Sleep -s 3
+                Start-Sleep -s 5
                 $NodeStatus = checkcluster $clustername $node
                 if ($NodeStatus.State -ne "Up") {
                     write-cmlog -message "The node [$Node] did not indicate it was marked 'Up' within the cluster. Please check its status in FCM. Prompting the user to take action." -type 'Error'
                     while ($NodeStatus.State -ne "Up") {
-                        Write-Warning "[$Node] indicates it is not 'Up' within the cluster. Please manually resume it in the cluster."
-                        Read-Host "Press any key to recheck node's state."
+                        Write-Warning "[$Node] indicates it is not 'Up' within the cluster. If this continues to fail, manually resume it in the cluster."
+                        Read-Host "Press any key to reattempt resumption of node and recheck its state."
+                        Resume-ClusterNode -Name $Node.Name -Cluster $ClusterName
+                        start-sleep -s 5
                         $NodeStatus = checkcluster $clustername $node
                     }
                 }
@@ -326,8 +328,8 @@ function ClusterGroup {
         [Parameter(Mandatory = $true, HelpMessage = "Region to reboot nodes in.")]
         [ValidateSet("IND", "DEN", "LHR", "FRA", "YUL", "YYZ")]
         $site,
-        [Parameter(Mandatory = $false, HelpMessage = "Specify a specific cluster to target in region")]
-        $TargetCluster,
+        [Parameter(Mandatory = $false, HelpMessage = "Comma delimited array of clusters to target.")]
+        [array]$TargetCluster,
         [Parameter(Mandatory = $false, HelpMessage = "Comma delimited array of clusters to not include.")]
         [array]$ExcludeCluster,
         [Parameter(HelpMessage = "Switch to exclude Hyper-V Clusters from list.")]
@@ -348,8 +350,13 @@ function ClusterGroup {
         'ExcludeSQL' { $filterscript += " `${psitem}.name -notmatch 'SQ'" }
         default {}
     }
-    if ($PSBoundParameters.ContainsKey('TargetCluster')) {
+    <#if ($PSBoundParameters.ContainsKey('TargetCluster')) {
         $filterscript += " `${psitem}.name -match '${TargetCluster}'"
+    }#>
+    if ($PSBoundParameters.ContainsKey('TargetCluster')) {
+        foreach ($item in $TargetCluster) {
+            $filterscript += " `${psitem}.name -eq '$item'"
+        }
     }
     if ($PSBoundParameters.ContainsKey('ExcludeCluster')) {
         foreach ($item in $ExcludeCluster) {
